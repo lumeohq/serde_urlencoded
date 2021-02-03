@@ -2,7 +2,7 @@ use crate::ser::part::{PartSerializer, Sink};
 use crate::ser::Error;
 use form_urlencoded::Serializer as UrlEncodedSerializer;
 use form_urlencoded::Target as UrlEncodedTarget;
-use serde::ser::Serialize;
+use serde::ser;
 use std::str;
 
 pub struct ValueSink<'input, 'key, 'target, Target>
@@ -11,6 +11,7 @@ where
 {
     urlencoder: &'target mut UrlEncodedSerializer<'input, Target>,
     key: &'key str,
+    nested: bool,
 }
 
 impl<'input, 'key, 'target, Target> ValueSink<'input, 'key, 'target, Target>
@@ -21,7 +22,11 @@ where
         urlencoder: &'target mut UrlEncodedSerializer<'input, Target>,
         key: &'key str,
     ) -> Self {
-        ValueSink { urlencoder, key }
+        ValueSink {
+            urlencoder,
+            key,
+            nested: false,
+        }
     }
 }
 
@@ -30,9 +35,16 @@ where
     Target: 'target + UrlEncodedTarget,
 {
     type Ok = ();
+    type SerializeSeq = Self;
 
     fn serialize_str(self, value: &str) -> Result<(), Error> {
-        self.urlencoder.append_pair(self.key, value);
+        if self.nested {
+            self.urlencoder
+                .append_pair(&format!("{}[]", self.key), value);
+        } else {
+            self.urlencoder.append_pair(self.key, value);
+        }
+
         Ok(())
     }
 
@@ -48,14 +60,48 @@ where
         Ok(())
     }
 
-    fn serialize_some<T: ?Sized + Serialize>(
+    fn serialize_some<T: ?Sized + ser::Serialize>(
         self,
         value: &T,
     ) -> Result<Self::Ok, Error> {
         value.serialize(PartSerializer::new(self))
     }
 
+    fn serialize_seq(self) -> Result<Self, Error> {
+        if self.nested {
+            Err(self.unsupported())
+        } else {
+            Ok(self)
+        }
+    }
+
     fn unsupported(self) -> Error {
         Error::Custom("unsupported value".into())
+    }
+}
+
+impl<'target, Target> ser::SerializeSeq for ValueSink<'_, '_, 'target, Target>
+where
+    Target: 'target + UrlEncodedTarget,
+{
+    type Ok = ();
+    type Error = Error;
+
+    fn serialize_element<T: ?Sized>(
+        &mut self,
+        value: &T,
+    ) -> Result<(), Self::Error>
+    where
+        T: ser::Serialize,
+    {
+        value.serialize(PartSerializer::new(ValueSink {
+            urlencoder: self.urlencoder,
+            key: self.key,
+            nested: true,
+        }))
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        Ok(())
     }
 }

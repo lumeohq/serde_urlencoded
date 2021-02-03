@@ -7,10 +7,16 @@ use serde::de::Error as de_Error;
 use serde::de::{self, IntoDeserializer};
 use serde::forward_to_deserialize_any;
 use std::borrow::Cow;
+use std::collections::btree_map::{self, BTreeMap};
 use std::io::Read;
+use std::mem;
 
 #[doc(inline)]
 pub use serde::de::value::Error;
+
+mod val_or_vec;
+
+use val_or_vec::ValOrVec;
 
 /// Deserializes a `application/x-www-form-urlencoded` value from a `&[u8]`.
 ///
@@ -85,9 +91,9 @@ pub struct Deserializer<'de> {
 
 impl<'de> Deserializer<'de> {
     /// Returns a new `Deserializer`.
-    pub fn new(parser: UrlEncodedParse<'de>) -> Self {
+    pub fn new(parse: UrlEncodedParse<'de>) -> Self {
         Deserializer {
-            inner: MapDeserializer::new(PartIterator(parser)),
+            inner: MapDeserializer::new(PartIterator::new(parse)),
         }
     }
 }
@@ -153,16 +159,62 @@ impl<'de> de::Deserializer<'de> for Deserializer<'de> {
     }
 }
 
-struct PartIterator<'de>(UrlEncodedParse<'de>);
+struct PartIterator<'de> {
+    parse: UrlEncodedParse<'de>,
+    sequences: BTreeMap<Part<'de>, Vec<Part<'de>>>,
+    sequences_iter: btree_map::IntoIter<Part<'de>, Vec<Part<'de>>>,
+}
 
-impl<'de> Iterator for PartIterator<'de> {
-    type Item = (Part<'de>, Part<'de>);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next().map(|(k, v)| (Part(k), Part(v)))
+impl<'de> PartIterator<'de> {
+    fn new(parse: UrlEncodedParse<'de>) -> Self {
+        Self {
+            parse,
+            sequences: BTreeMap::new(),
+            sequences_iter: BTreeMap::new().into_iter(),
+        }
     }
 }
 
+impl<'de> Iterator for PartIterator<'de> {
+    type Item = (Part<'de>, ValOrVec<Part<'de>>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // Parse the input
+        while let Some((k, v)) = self.parse.next() {
+            if !k.ends_with("[]") {
+                return Some((Part(k), ValOrVec::Val(Part(v))));
+            }
+
+            self.sequences
+                .entry(Part(k))
+                .or_insert_with(|| Vec::with_capacity(4))
+                .push(Part(v));
+        }
+
+        if !self.sequences.is_empty() {
+            // Input just got exhausted, create an iterator over the collected
+            // sequences.
+            self.sequences_iter = mem::take(&mut self.sequences).into_iter();
+        }
+
+        // Delegate to the iterator over the collected sequences
+        self.sequences_iter.next().map(|(mut k, v)| {
+            // Get rid of the trailing `[]`
+            match &mut k.0 {
+                Cow::Borrowed(s) => {
+                    k.0 = Cow::Borrowed(&s[..s.len() - 2]);
+                }
+                Cow::Owned(s) => {
+                    s.truncate(s.len() - 2);
+                }
+            }
+
+            (k, ValOrVec::Vec(v))
+        })
+    }
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct Part<'de>(Cow<'de, str>);
 
 impl<'de> IntoDeserializer<'de> for Part<'de> {
