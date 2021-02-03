@@ -74,21 +74,6 @@ impl fmt::Display for Error {
 }
 
 impl error::Error for Error {
-    fn description(&self) -> &str {
-        match *self {
-            Error::Custom(ref msg) => msg,
-            Error::Utf8(ref err) => error::Error::description(err),
-        }
-    }
-
-    /// The lower-level cause of this error, in the case of a `Utf8` error.
-    fn cause(&self) -> Option<&dyn error::Error> {
-        match *self {
-            Error::Custom(_) => None,
-            Error::Utf8(ref err) => Some(err),
-        }
-    }
-
     /// The lower-level source of this error, in the case of a `Utf8` error.
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match *self {
