@@ -24,4 +24,5 @@ ryu = "1"
 serde = "1.0.69"
 
 [dev-dependencies]
+matches = "0.1.8"
 serde_derive = "1"
