@@ -9,7 +9,7 @@ pub enum Key<'key> {
     Dynamic(Cow<'key, str>),
 }
 
-impl<'key> Deref for Key<'key> {
+impl Deref for Key<'_> {
     type Target = str;
 
     fn deref(&self) -> &str {
@@ -20,8 +20,8 @@ impl<'key> Deref for Key<'key> {
     }
 }
 
-impl<'key> From<Key<'key>> for Cow<'static, str> {
-    fn from(key: Key<'key>) -> Self {
+impl From<Key<'_>> for Cow<'static, str> {
+    fn from(key: Key<'_>) -> Self {
         match key {
             Key::Static(key) => key.into(),
             Key::Dynamic(key) => key.into_owned().into(),
