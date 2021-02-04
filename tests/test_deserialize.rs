@@ -114,7 +114,7 @@ fn deserialize_list_of_str() {
     assert_eq!(
         serde_urlencoded::from_str("a[]=a&a[]=b"),
         Ok(vec![("a", vec!["a", "b"])])
-    )
+    );
 }
 
 #[test]
