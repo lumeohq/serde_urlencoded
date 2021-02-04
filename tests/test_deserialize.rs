@@ -107,12 +107,12 @@ fn deserialize_struct() {
 fn deserialize_list_of_str() {
     // TODO: It would make sense to support this.
     assert_matches!(
-        serde_urlencoded::from_str::<Vec<(&str, &str)>>("a%5B%5D=a&a%5B%5D=b"),
+        serde_urlencoded::from_str::<Vec<(&str, &str)>>("a[]=a&a[]=b"),
         Err(error) if error.to_string().contains("unsupported")
     );
 
     assert_eq!(
-        serde_urlencoded::from_str("a%5B%5D=a&a%5B%5D=b"),
+        serde_urlencoded::from_str("a[]=a&a[]=b"),
         Ok(vec![("a", vec!["a", "b"])])
     )
 }
@@ -126,9 +126,7 @@ fn deserialize_multiple_lists() {
     }
 
     assert_eq!(
-        serde_urlencoded::from_str(
-            "xs%5B%5D=true&xs%5B%5D=false&ys%5B%5D=3&ys%5B%5D=2&ys%5B%5D=1"
-        ),
+        serde_urlencoded::from_str("xs[]=true&xs[]=false&ys[]=3&ys[]=2&ys[]=1"),
         Ok(Lists {
             xs: vec![true, false],
             ys: vec![3, 2, 1]
@@ -136,9 +134,7 @@ fn deserialize_multiple_lists() {
     );
 
     assert_eq!(
-        serde_urlencoded::from_str(
-            "ys%5B%5D=3&xs%5B%5D=true&ys%5B%5D=2&xs%5B%5D=false&ys%5B%5D=1"
-        ),
+        serde_urlencoded::from_str("ys[]=3&xs[]=true&ys[]=2&xs[]=false&ys[]=1"),
         Ok(Lists {
             xs: vec![true, false],
             ys: vec![3, 2, 1]
@@ -159,9 +155,7 @@ fn deserialize_with_serde_attributes() {
     }
 
     assert_eq!(
-        serde_urlencoded::from_str(
-            "xs%5B%5D=true&xs%5B%5D=false&def=3&flag=true"
-        ),
+        serde_urlencoded::from_str("xs[]=true&xs[]=false&def=3&flag=true"),
         Ok(FieldsWithAttributes {
             xs: vec![true, false],
             def: Some(3),
@@ -190,7 +184,7 @@ fn deserialize_nested_list() {
 #[test]
 fn deserialize_list_of_option() {
     assert_eq!(
-        serde_urlencoded::from_str("list%5B%5D=10&list%5B%5D=100"),
+        serde_urlencoded::from_str("list[]=10&list[]=100"),
         Ok(vec![("list", vec![Some(10), Some(100)])])
     );
 }
@@ -198,7 +192,7 @@ fn deserialize_list_of_option() {
 #[test]
 fn deserialize_list_of_newtype() {
     assert_eq!(
-        serde_urlencoded::from_str("list%5B%5D=test"),
+        serde_urlencoded::from_str("list[]=test"),
         Ok(vec![("list", vec![NewType("test")])])
     );
 }
@@ -206,7 +200,7 @@ fn deserialize_list_of_newtype() {
 #[test]
 fn deserialize_list_of_enum() {
     assert_eq!(
-        serde_urlencoded::from_str("item%5B%5D=A&item%5B%5D=B&item%5B%5D=C"),
+        serde_urlencoded::from_str("item[]=A&item[]=B&item[]=C"),
         Ok(vec![("item", vec![X::A, X::B, X::C])])
     );
 }
@@ -244,7 +238,7 @@ fn deserialize_newstruct() {
         list: vec!["hello", "world"],
     };
     assert_eq!(
-        serde_urlencoded::from_str("list%5B%5D=hello&list%5B%5D=world"),
+        serde_urlencoded::from_str("list[]=hello&list[]=world"),
         Ok(de)
     );
 }
@@ -255,9 +249,7 @@ fn deserialize_numlist() {
         list: vec![1, 2, 3, 4],
     };
     assert_eq!(
-        serde_urlencoded::from_str(
-            "list%5B%5D=1&list%5B%5D=2&list%5B%5D=3&list%5B%5D=4"
-        ),
+        serde_urlencoded::from_str("list[]=1&list[]=2&list[]=3&list[]=4"),
         Ok(de)
     );
 }
