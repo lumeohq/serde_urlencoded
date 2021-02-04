@@ -118,6 +118,17 @@ fn deserialize_list_of_str() {
 }
 
 #[test]
+fn deserialize_list_of_str_escaped() {
+    // This could theoretically work, since the key would only have to borrow a
+    // part of the input that's not percent-encoded, but the current
+    // deserialization code isn't really equipped to do sth. like that.
+    assert_matches!(
+        serde_urlencoded::from_str::<Vec<(&str, Vec<&str>)>>("a%5B%5D=a&a%5B%5D=b"),
+        Err(error) if error.to_string().contains("expected a borrowed string")
+    );
+}
+
+#[test]
 fn deserialize_multiple_lists() {
     #[derive(Debug, PartialEq, Deserialize)]
     struct Lists {
@@ -234,22 +245,36 @@ struct ListStruct {
 
 #[test]
 fn deserialize_newstruct() {
-    let de = NewStruct {
-        list: vec!["hello", "world"],
-    };
+    assert_eq!(
+        serde_urlencoded::from_str("list%5B%5D=hello&list%5B%5D=world"),
+        Ok(NewStruct {
+            list: vec!["hello", "world"],
+        })
+    );
+
     assert_eq!(
         serde_urlencoded::from_str("list[]=hello&list[]=world"),
-        Ok(de)
+        Ok(NewStruct {
+            list: vec!["hello", "world"],
+        })
     );
 }
 
 #[test]
 fn deserialize_numlist() {
-    let de = NumList {
-        list: vec![1, 2, 3, 4],
-    };
+    assert_eq!(
+        serde_urlencoded::from_str(
+            "list%5B%5D=1&list%5B%5D=2&list%5B%5D=3&list%5B%5D=4"
+        ),
+        Ok(NumList {
+            list: vec![1, 2, 3, 4],
+        })
+    );
+
     assert_eq!(
         serde_urlencoded::from_str("list[]=1&list[]=2&list[]=3&list[]=4"),
-        Ok(de)
+        Ok(NumList {
+            list: vec![1, 2, 3, 4],
+        })
     );
 }
