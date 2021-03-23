@@ -152,6 +152,16 @@ where
         })
     }
 
+    fn deserialize_ignored_any<V>(
+        self,
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+    where
+        V: de::Visitor<'de>,
+    {
+        visitor.visit_unit()
+    }
+
     forward_to_part! {
         deserialize_bool,
         deserialize_char,
@@ -172,7 +182,6 @@ where
         deserialize_f64,
         deserialize_option,
         deserialize_identifier,
-        deserialize_ignored_any,
         deserialize_map,
     }
 }

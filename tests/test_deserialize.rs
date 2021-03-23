@@ -258,6 +258,25 @@ fn deserialize_newstruct() {
             list: vec!["hello", "world"],
         })
     );
+
+    assert_eq!(
+        serde_urlencoded::from_str("list[]=hello&whatever=world"),
+        Ok(NewStruct {
+            list: vec!["hello"],
+        })
+    );
+
+    assert_eq!(
+        serde_urlencoded::from_str("list[]=hello&whatever[]=world"),
+        Ok(NewStruct {
+            list: vec!["hello"],
+        })
+    );
+
+    assert_matches!(
+        serde_urlencoded::from_str::<NewStruct>("hello=world"),
+        Err(error) if error.to_string() == "missing field `list`"
+    );
 }
 
 #[test]
